@@ -6,17 +6,18 @@ import 'services/enhanced_websocket_service.dart';
 import 'services/audio_service.dart';
 import 'services/tts_service.dart';
 import 'services/dynamic_ip_detector.dart';
-import 'models/voice_command.dart';
 import 'widgets/accessible_enhanced_voice_button.dart';
 import 'widgets/accessible_transcription_card.dart';
 import 'widgets/accessible_connection_status_card.dart';
 import 'dart:async';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -65,15 +66,18 @@ class MyApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.system,
-      home: AccessibleVoiceControlScreen(),
+      home: const AccessibleVoiceControlScreen(),
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(
-            textScaleFactor: MediaQuery.of(context).textScaleFactor.clamp(1.0, 2.0),
+            textScaler: TextScaler.linear(
+              MediaQuery.of(context).textScaler.scale(1.0).clamp(1.0, 2.0),
+            ),
           ),
           child: child!,
         );
       },
+
       debugShowCheckedModeBanner: false,
     );
   }
@@ -220,7 +224,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
     }
   }
 
-  // ↓ MÉTODO COMPLETAMENTE REESCRITO con detección automática
+  // ↓ METODO COMPLETAMENTE REESCRITO con detección automática
   Future<void> _autoDiscoverAndConnect() async {
     setState(() {
       _isSearchingServer = true;
@@ -566,22 +570,22 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('El sistema de detección automática no encontró el servidor Whisper.'),
-                  SizedBox(height: 12),
-                  Text('Verificaciones realizadas:',
+                  const Text('El sistema de detección automática no encontró el servidor Whisper.'),
+                  const SizedBox(height: 12),
+                  const Text('Verificaciones realizadas:',
                       style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('• Interfaces de red locales'),
-                  Text('• IP de WSL2 (si está en Windows)'),
-                  Text('• Gateway y rangos de red'),
-                  Text('• IPs comunes de desarrollo'),
-                  SizedBox(height: 12),
-                  Text('Verifique que:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('• El servicio Whisper esté ejecutándose en puerto 8000'),
-                  Text('• WSL2 esté activo (Windows)'),
-                  Text('• No haya problemas de firewall'),
-                  SizedBox(height: 12),
+                  const Text('• Interfaces de red locales'),
+                  const Text('• IP de WSL2 (si está en Windows)'),
+                  const Text('• Gateway y rangos de red'),
+                  const Text('• IPs comunes de desarrollo'),
+                  const SizedBox(height: 12),
+                  const Text('Verifique que:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('• El servicio Whisper esté ejecutándose en puerto 8000'),
+                  const Text('• WSL2 esté activo (Windows)'),
+                  const Text('• No haya problemas de firewall'),
+                  const SizedBox(height: 12),
                   Container(
-                    padding: EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(8),
@@ -610,8 +614,8 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                     ),
                   ),
 
-                  SizedBox(height: 8),
-                  Text('Puede usar comandos de texto mientras tanto.',
+                  const SizedBox(height: 8),
+                  const Text('Puede usar comandos de texto mientras tanto.',
                       style: TextStyle(fontStyle: FontStyle.italic)),
                 ],
               ),
@@ -624,7 +628,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
               button: true,
               child: TextButton(
                 onPressed: () => _showNetworkDiagnostics(),
-                child: Text('Diagnóstico'),
+                child: const Text('Diagnóstico'),
               ),
             ),
             Semantics(
@@ -636,7 +640,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                   Navigator.of(context).pop();
                   _autoDiscoverAndConnect();
                 },
-                child: Text('Reintentar'),
+                child: const Text('Reintentar'),
               ),
             ),
             Semantics(
@@ -644,7 +648,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
               button: true,
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('Entendido'),
+                child: const Text('Entendido'),
               ),
             ),
           ],
@@ -653,12 +657,15 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
     );
   }
 
-  // ↓ NUEVO: Mostrar diagnóstico detallado de red
+// Mostrar diagnóstico detallado de red
   void _showNetworkDiagnostics() async {
+    // Capturamos un Navigator seguro antes del async gap
+    final navigator = Navigator.of(context);
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (context) => const AlertDialog(
         title: Text('Obteniendo diagnóstico...'),
         content: Center(child: CircularProgressIndicator()),
       ),
@@ -666,72 +673,85 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
 
     try {
       final diagnostics = await DynamicIPDetector.getNetworkDiagnostics();
-      Navigator.of(context).pop(); // Cerrar loading
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Diagnóstico de Red'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('IPs Candidatas Encontradas:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                if (diagnostics['all_candidates'] != null)
-                  ...((diagnostics['all_candidates'] as List).map((ip) =>
-                      Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Text('• $ip', style: TextStyle(fontSize: 12)),
-                      )
-                  )),
-                SizedBox(height: 12),
-                if (diagnostics['wsl2_ip'] != null) ...[
-                  Text('WSL2 IP Detectada:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('${diagnostics['wsl2_ip']}'),
-                  SizedBox(height: 12),
+      // Usamos navigator seguro, no context
+      navigator.pop(); // Cerrar loading
+
+      navigator.push(
+        PageRouteBuilder(
+          opaque: false,
+          pageBuilder: (context, _, __) => AlertDialog(
+            title: const Text('Diagnóstico de Red'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'IPs Candidatas Encontradas:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (diagnostics['all_candidates'] != null)
+                    ...((diagnostics['all_candidates'] as List).map((ip) =>
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Text('• $ip', style: const TextStyle(fontSize: 12)),
+                        ))),
+                  const SizedBox(height: 12),
+                  if (diagnostics['wsl2_ip'] != null) ...[
+                    const Text(
+                      'WSL2 IP Detectada:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text('${diagnostics['wsl2_ip']}'),
+                    const SizedBox(height: 12),
+                  ],
+                  const Text(
+                    'Interfaces de Red:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (diagnostics['network_interfaces'] != null)
+                    ...((diagnostics['network_interfaces'] as List).map((interface) =>
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${interface['name']}:',
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                              ...(interface['addresses'] as List).map((addr) => Text(
+                                '  ${addr['address']}',
+                                style: const TextStyle(fontSize: 11),
+                              )),
+                            ],
+                          ),
+                        ))),
                 ],
-                Text('Interfaces de Red:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                if (diagnostics['network_interfaces'] != null)
-                  ...((diagnostics['network_interfaces'] as List).map((interface) =>
-                      Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${interface['name']}:',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                            ...(interface['addresses'] as List).map((addr) =>
-                                Text('  ${addr['address']}',
-                                    style: TextStyle(fontSize: 11))
-                            ),
-                          ],
-                        ),
-                      )
-                  )),
-              ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => navigator.pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cerrar'),
-            ),
-          ],
         ),
       );
     } catch (e) {
-      Navigator.of(context).pop(); // Cerrar loading
+      navigator.pop(); // Cerrar loading
+      if (!mounted) return;
       _showAccessibleSnackBar(
-          'Error obteniendo diagnóstico: $e',
-          Colors.red,
-          'Error'
+        'Error obteniendo diagnóstico: $e',
+        Colors.red,
+        'Error',
       );
     }
   }
+
 
   void _showAccessibleSnackBar(String message, Color color, String category) {
     SemanticsService.announce(
@@ -755,7 +775,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                 color == Colors.orange ? 'Advertencia' :
                 'Error',
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(child: Text(message)),
             ],
           ),
@@ -789,7 +809,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
           title: Semantics(
             label: 'Título: Control de Voz para Robot con detección automática',
             header: true,
-            child: Row(
+            child: const Row(
               children: [
                 Icon(Icons.smart_toy,
                     color: Colors.white,
@@ -836,7 +856,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
         body: Semantics(
           label: 'Contenido principal de la aplicación',
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -855,7 +875,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                   onRefreshStatus: () => _webSocketService.requestStatus(),
                 ),
 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 if (_isConnected)
                   Semantics(
@@ -871,15 +891,15 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                     ),
                   ),
 
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
 
                 _buildAccessibleTextCommandCard(),
 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 if (_isConnected) _buildAccessibleQuickCommandsCard(),
 
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
 
                 if (_lastTranscription.isNotEmpty || _lastResponse.isNotEmpty)
                   AccessibleTranscriptionCard(
@@ -903,7 +923,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
       label: 'Sección de comandos de texto',
       child: Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -920,14 +940,14 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.blue, width: 2),
+                      borderSide: const BorderSide(color: Colors.blue, width: 2),
                     ),
                     suffixIcon: Semantics(
                       label: 'Enviar comando de texto',
                       hint: 'Presione para enviar el comando al robot',
                       button: true,
                       child: IconButton(
-                        icon: Icon(Icons.send,
+                        icon: const Icon(Icons.send,
                             semanticLabel: 'Icono de enviar'),
                         onPressed: _isConnected ? _sendTextCommand : null,
                         tooltip: 'Enviar comando',
@@ -938,13 +958,13 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                   onSubmitted: _isConnected ? (_) => _sendTextCommand() : null,
                   textInputAction: TextInputAction.send,
                   keyboardType: TextInputType.text,
-                  style: TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: 16),
                   maxLines: null,
                   minLines: 1,
                 ),
               ),
               if (!_isConnected) ...[
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Semantics(
                   label: 'Información: Sin conexión al servidor',
                   child: Text(
@@ -978,7 +998,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
       label: 'Sección de comandos rápidos',
       child: Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -990,8 +1010,8 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                     Icon(Icons.flash_on,
                         color: Colors.orange[600],
                         semanticLabel: 'Icono de comandos rápidos'),
-                    SizedBox(width: 8),
-                    Expanded(
+                    const SizedBox(width: 8),
+                    const Expanded(
                       child: Text(
                         'Comandos Rápidos',
                         style: TextStyle(
@@ -1003,7 +1023,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                   ],
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Semantics(
                 label: 'Lista de comandos predefinidos',
                 child: Wrap(
@@ -1031,16 +1051,16 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
           _textController.text = command;
           _sendTextCommand();
         },
-        child: Text(command),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue[100],
           foregroundColor: Colors.blue[800],
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
-          minimumSize: Size(88, 36),
+          minimumSize: const Size(88, 36),
         ),
+        child: Text(command),
       ),
     );
   }

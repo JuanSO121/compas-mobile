@@ -1,6 +1,5 @@
 // lib/widgets/accessible_connection_status_card.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'accessible_status_indicator.dart';
 
 class AccessibleConnectionStatusCard extends StatelessWidget {
@@ -51,9 +50,9 @@ class AccessibleConnectionStatusCard extends StatelessWidget {
                           ? 'Icono de conectado'
                           : 'Icono de desconectado',
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
+                      child: const Text(
                         'Estado de Conexión',
                         style: TextStyle(
                             fontSize: 18,
@@ -88,11 +87,11 @@ class AccessibleConnectionStatusCard extends StatelessWidget {
                   serverIP != null
                       ? 'Servidor: $serverIP:8000'
                       : 'Servidor: Buscando...',
-                  style: TextStyle(fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ),
 
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
 
               // Estado de conexión con descripción detallada
               Semantics(
@@ -118,7 +117,7 @@ class AccessibleConnectionStatusCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Servicios:',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
@@ -200,7 +199,7 @@ class AccessibleConnectionStatusCard extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                   ),
                 ),
@@ -208,12 +207,12 @@ class AccessibleConnectionStatusCard extends StatelessWidget {
 
               // Mensaje de ayuda para usuarios con discapacidad visual
               if (!isConnected) ...[
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Semantics(
                   label: 'Información de ayuda sobre conexión',
                   readOnly: true,
                   child: Container(
-                    padding: EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.orange.withOpacity(0.1),
                       border: Border.all(color: Colors.orange[300]!),
