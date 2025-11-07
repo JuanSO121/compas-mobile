@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.flutter_voice_robot">
 
     <!-- ✅ PERMISOS OBLIGATORIOS -->
@@ -13,7 +14,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+        android:maxSdkVersion="32"
+        tools:targetApi="4" />
 
     <!-- ✅ PERMISOS ADICIONALES NUEVOS PARA MR / SENSOR FUSION -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -21,19 +23,28 @@
     <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />
 
     <!-- ✅ CARACTERÍSTICAS DEL DISPOSITIVO -->
-    <uses-feature android:name="android.hardware.microphone" android:required="true" />
-    <uses-feature android:name="android.hardware.audio.output" android:required="false" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
-    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="true"
+        tools:targetApi="5" />
+    <uses-feature android:name="android.hardware.audio.output" android:required="false"
+        tools:targetApi="5" />
+    <uses-feature android:name="android.hardware.camera" android:required="false"
+        tools:targetApi="5" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"
+        tools:targetApi="5" />
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false"
+        tools:targetApi="5" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false"
+        tools:targetApi="5" />
 
     <application
         android:label="Voice Robot Control"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
-        android:requestLegacyExternalStorage="true">
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
+        tools:targetApi="23">
+
 
         <activity
             android:name=".MainActivity"
@@ -43,7 +54,8 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            tools:targetApi="11">
 
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

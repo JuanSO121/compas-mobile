@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import '../../services/auth_service.dart';
+import '../../utils/password_validator.dart';
 import 'login_screen_integrated.dart';
 
 class RegisterScreenIntegrated extends StatefulWidget {
@@ -38,6 +39,10 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
   String? _errorMessage;
   String _visualImpairmentLevel = 'none';
   bool _screenReaderUser = false;
+
+  // Validación de contraseña
+  PasswordValidationResult? _passwordValidation;
+  bool _showPasswordRequirements = false;
 
   // Animations
   late AnimationController _fadeController;
@@ -83,8 +88,11 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
     });
 
     _passwordController.addListener(() {
-      if (_errorMessage != null && _currentStep == 1) {
-        setState(() => _errorMessage = null);
+      if (_currentStep == 1) {
+        setState(() {
+          _errorMessage = null;
+          _passwordValidation = PasswordValidator.validate(_passwordController.text);
+        });
       }
     });
 
@@ -167,13 +175,14 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
     setState(() {
       _currentStep = 1;
       _errorMessage = null;
+      _showPasswordRequirements = true;
     });
 
     _progressController.animateTo(0.5);
 
     HapticFeedback.lightImpact();
     SemanticsService.announce(
-      'Paso 2 de 3: Cree una contraseña segura',
+      'Paso 2 de 3: Cree una contraseña segura con mayúsculas, minúsculas, números y símbolos',
       TextDirection.ltr,
     );
 
@@ -186,6 +195,7 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
+    // Validar que no estén vacíos
     if (password.isEmpty || confirmPassword.isEmpty) {
       setState(() => _errorMessage = 'Por favor complete ambos campos de contraseña');
       _showAccessibleSnackBar(_errorMessage!, isError: true);
@@ -198,18 +208,29 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
       return;
     }
 
-    if (password != confirmPassword) {
-      setState(() => _errorMessage = 'Las contraseñas no coinciden');
+    // Validar fortaleza de contraseña
+    final validation = PasswordValidator.validate(password);
+    if (!validation.isValid) {
+      setState(() {
+        _errorMessage = validation.message;
+        _passwordValidation = validation;
+      });
+
+      // Anuncio accesible con todas las sugerencias
+      final announcement = '${validation.message}. ${validation.suggestions.join('. ')}';
+      SemanticsService.announce(announcement, TextDirection.ltr);
       _showAccessibleSnackBar(_errorMessage!, isError: true);
-      _confirmPasswordFocusNode.requestFocus();
+      _passwordFocusNode.requestFocus();
       _shakeController.forward(from: 0);
       return;
     }
 
-    if (password.length < 8) {
-      setState(() => _errorMessage = 'La contraseña debe tener al menos 8 caracteres');
+    // Validar que coincidan
+    final matchError = PasswordValidator.validatePasswordMatch(password, confirmPassword);
+    if (matchError != null) {
+      setState(() => _errorMessage = matchError);
       _showAccessibleSnackBar(_errorMessage!, isError: true);
-      _passwordFocusNode.requestFocus();
+      _confirmPasswordFocusNode.requestFocus();
       _shakeController.forward(from: 0);
       return;
     }
@@ -217,6 +238,7 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
     setState(() {
       _currentStep = 2;
       _errorMessage = null;
+      _showPasswordRequirements = false;
     });
 
     _progressController.animateTo(1.0);
@@ -326,6 +348,7 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
     setState(() {
       _currentStep = step;
       _errorMessage = null;
+      _showPasswordRequirements = (step == 1);
     });
     _progressController.animateTo(step / 2);
   }
@@ -337,6 +360,7 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
       setState(() {
         _currentStep--;
         _errorMessage = null;
+        _showPasswordRequirements = (_currentStep == 1);
       });
       _progressController.animateTo(_currentStep / 2);
 
@@ -458,6 +482,225 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
     );
   }
 
+  // ... [Los métodos _buildProgressIndicator y _buildEmailStep permanecen igual]
+
+  Widget _buildPasswordStep(ThemeData theme) {
+    return Column(
+      children: [
+        Semantics(
+          label: 'Paso 2: Crea una contraseña segura',
+          child: Text(
+            'Crea tu contraseña',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Semantics(
+          label: 'Debe incluir mayúsculas, minúsculas, números y símbolos especiales',
+          child: Text(
+            'Incluye mayúsculas, minúsculas, números y símbolos',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontSize: 17,
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 40),
+
+        // Campo de contraseña
+        _buildTextField(
+          controller: _passwordController,
+          focusNode: _passwordFocusNode,
+          label: 'Contraseña',
+          hint: 'Tu contraseña segura',
+          icon: Icons.lock_rounded,
+          obscureText: true,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _confirmPasswordFocusNode.requestFocus(),
+        ),
+
+        // Indicador de fortaleza de contraseña
+        if (_passwordController.text.isNotEmpty && _passwordValidation != null) ...[
+          const SizedBox(height: 16),
+          _buildPasswordStrengthIndicator(theme),
+        ],
+
+        const SizedBox(height: 20),
+
+        // Campo de confirmar contraseña
+        _buildTextField(
+          controller: _confirmPasswordController,
+          focusNode: _confirmPasswordFocusNode,
+          label: 'Confirmar contraseña',
+          hint: 'Repite tu contraseña',
+          icon: Icons.lock_outline_rounded,
+          obscureText: true,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _nextStep(),
+        ),
+
+        // Requisitos de contraseña
+        if (_showPasswordRequirements) ...[
+          const SizedBox(height: 24),
+          _buildPasswordRequirements(theme),
+        ],
+
+        if (_errorMessage != null) ...[
+          const SizedBox(height: 16),
+          _buildErrorMessage(theme),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPasswordStrengthIndicator(ThemeData theme) {
+    final validation = _passwordValidation!;
+    final strengthColor = _getStrengthColor(theme, validation.strengthScore);
+    final progress = (validation.strengthScore / 6).clamp(0.0, 1.0);
+
+    return Semantics(
+      label: 'Fortaleza de contraseña: ${validation.strengthLevel}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(strengthColor),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                _getStrengthIcon(validation.strengthScore),
+                color: strengthColor,
+                size: 24,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            validation.strengthMessage,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: strengthColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPasswordRequirements(ThemeData theme) {
+    final requirements = PasswordValidator.getRequirements();
+    final password = _passwordController.text;
+
+    return Semantics(
+      label: 'Requisitos de contraseña',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.outline.withOpacity(0.2),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.checklist_rounded,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Requisitos de seguridad:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(requirements.length, (index) {
+              final requirement = requirements[index];
+              final isMet = PasswordValidator.checkRequirement(password, index);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Semantics(
+                  label: '${requirement.text}, ${isMet ? "cumplido" : "pendiente"}',
+                  child: Row(
+                    children: [
+                      Icon(
+                        isMet ? Icons.check_circle : Icons.radio_button_unchecked,
+                        size: 18,
+                        color: isMet
+                            ? theme.colorScheme.secondary
+                            : theme.colorScheme.onSurface.withOpacity(0.3),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          requirement.text,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+                            color: isMet
+                                ? theme.colorScheme.onSurface
+                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                            decoration: isMet ? null : TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStrengthColor(ThemeData theme, int score) {
+    if (score >= 5) return Colors.green;
+    if (score >= 4) return Colors.lightGreen;
+    if (score >= 3) return Colors.orange;
+    if (score >= 2) return Colors.deepOrange;
+    return theme.colorScheme.error;
+  }
+
+  IconData _getStrengthIcon(int score) {
+    if (score >= 5) return Icons.verified_user_rounded;
+    if (score >= 4) return Icons.shield_rounded;
+    if (score >= 3) return Icons.warning_amber_rounded;
+    if (score >= 2) return Icons.warning_rounded;
+    return Icons.error_rounded;
+  }
+
+  // ... [Resto de métodos permanecen igual: _buildNameStep, _buildTextField, etc.]
+
   Widget _buildProgressIndicator(ThemeData theme) {
     return Semantics(
       label: 'Progreso: Paso ${_currentStep + 1} de 3',
@@ -476,36 +719,26 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: AnimatedBuilder(
-                  animation: _progressAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: _currentStep >= 1
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.primary.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    );
-                  },
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _currentStep >= 1
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.primary.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: AnimatedBuilder(
-                  animation: _progressAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: _currentStep >= 2
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.primary.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    );
-                  },
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _currentStep >= 2
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.primary.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
             ],
@@ -514,34 +747,9 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '1. Email',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              Text(
-                '2. Contraseña',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _currentStep >= 1
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.4),
-                ),
-              ),
-              Text(
-                '3. Nombre',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _currentStep >= 2
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.4),
-                ),
-              ),
+              Text('1. Email', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+              Text('2. Contraseña', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _currentStep >= 1 ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.4))),
+              Text('3. Nombre', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _currentStep >= 2 ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.4))),
             ],
           ),
         ],
@@ -554,112 +762,18 @@ class _RegisterScreenIntegratedState extends State<RegisterScreenIntegrated>
       children: [
         Semantics(
           label: 'Paso 1: Ingresa tu correo electrónico',
-          child: Text(
-            '¿Cuál es tu email?',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          child: Text('¿Cuál es tu email?', style: theme.textTheme.titleLarge?.copyWith(fontSize: 28, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
         ),
         const SizedBox(height: 16),
         Semantics(
-          label: 'Te enviaremos un código de verificación para confirmar tu identidad',
-          child: Text(
-            'Te enviaremos un código de verificación',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontSize: 17,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
-          ),
+          label: 'Te enviaremos un código de verificación',
+          child: Text('Te enviaremos un código de verificación', style: theme.textTheme.bodyLarge?.copyWith(fontSize: 17, color: theme.colorScheme.onSurface.withOpacity(0.6)), textAlign: TextAlign.center),
         ),
         const SizedBox(height: 60),
-        _buildTextField(
-          controller: _emailController,
-          focusNode: _emailFocusNode,
-          label: 'Correo electrónico',
-          hint: 'ejemplo@correo.com',
-          icon: Icons.email_rounded,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => _nextStep(),
-        ),
-        if (_errorMessage != null) ...[
-          const SizedBox(height: 16),
-          _buildErrorMessage(theme),
-        ],
+        _buildTextField(controller: _emailController, focusNode: _emailFocusNode, label: 'Correo electrónico', hint: 'ejemplo@correo.com', icon: Icons.email_rounded, keyboardType: TextInputType.emailAddress, textInputAction: TextInputAction.next, onSubmitted: (_) => _nextStep()),
+        if (_errorMessage != null) ...[const SizedBox(height: 16), _buildErrorMessage(theme)],
         const SizedBox(height: 40),
-        _buildInfoBox(
-          theme,
-          icon: Icons.info_outline_rounded,
-          text: 'Usaremos este email para enviarte actualizaciones importantes',
-          color: theme.colorScheme.secondary,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPasswordStep(ThemeData theme) {
-    return Column(
-      children: [
-        Semantics(
-          label: 'Paso 2: Crea una contraseña segura',
-          child: Text(
-            'Crea tu contraseña',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Semantics(
-          label: 'Debe tener al menos 8 caracteres con letras y números',
-          child: Text(
-            'Mínimo 8 caracteres',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontSize: 17,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 60),
-        _buildTextField(
-          controller: _passwordController,
-          focusNode: _passwordFocusNode,
-          label: 'Contraseña',
-          hint: 'Tu contraseña segura',
-          icon: Icons.lock_rounded,
-          obscureText: true,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => _confirmPasswordFocusNode.requestFocus(),
-        ),
-        const SizedBox(height: 20),
-        _buildTextField(
-          controller: _confirmPasswordController,
-          focusNode: _confirmPasswordFocusNode,
-          label: 'Confirmar contraseña',
-          hint: 'Repite tu contraseña',
-          icon: Icons.lock_outline_rounded,
-          obscureText: true,
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) => _nextStep(),
-        ),
-        if (_errorMessage != null) ...[
-          const SizedBox(height: 16),
-          _buildErrorMessage(theme),
-        ],
-        const SizedBox(height: 40),
-        _buildInfoBox(
-          theme,
-          icon: Icons.security_rounded,
-          text: 'Usa mayúsculas, minúsculas, números y símbolos para mayor seguridad',
-          color: theme.colorScheme.secondary,
-        ),
+        _buildInfoBox(theme, icon: Icons.info_outline_rounded, text: 'Usaremos este email para enviarte actualizaciones importantes', color: theme.colorScheme.secondary),
       ],
     );
   }

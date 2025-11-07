@@ -6,7 +6,7 @@ description: Control de voz accesible para robot - Diseñado para personas con d
 version: 2.0.0+2
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
   flutter: ">=3.0.0"
 
 dependencies:
@@ -24,7 +24,8 @@ dependencies:
   provider: ^6.1.1
 
   # JSON
-  json_annotation: ^4.8.1
+  json_annotation: ^4.9.0
+
 
   # Almacenamiento seguro
   flutter_secure_storage: ^9.0.0
@@ -53,6 +54,9 @@ dependencies:
 
   # Iconos
   cupertino_icons: ^1.0.8
+
+  build_runner: ^2.4.6
+  json_serializable: ^6.8.0
 
 dev_dependencies:
   flutter_test:

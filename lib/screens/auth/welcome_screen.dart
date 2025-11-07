@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
-import 'login_screen.dart';
-import 'register_screen.dart';
+import 'package:accessible_voice_robot_control/screens/auth/login_screen_integrated.dart';
+import 'package:accessible_voice_robot_control/screens/auth/register_screen_integrated.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -20,6 +20,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   void initState() {
     super.initState();
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -28,9 +29,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       parent: _fadeController,
       curve: Curves.easeInOut,
     );
+
     _fadeController.forward();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Anuncio accesible con pequeño retraso para asegurar que se lea correctamente
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 300));
       SemanticsService.announce(
         'Bienvenido a COMPAS. Dos opciones disponibles: Iniciar sesión o Crear cuenta',
         TextDirection.ltr,
@@ -47,18 +51,24 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void _navigateToLogin() {
     HapticFeedback.lightImpact();
     SemanticsService.announce('Ir a iniciar sesión', TextDirection.ltr);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const LoginScreenIntegrated(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
     );
   }
 
   void _navigateToRegister() {
     HapticFeedback.lightImpact();
     SemanticsService.announce('Ir a crear cuenta', TextDirection.ltr);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const RegisterScreenIntegrated(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
     );
   }
 
@@ -78,7 +88,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               children: [
                 const Spacer(),
 
-                // LOGO / ICONO PRINCIPAL
+                // LOGO PRINCIPAL
                 Semantics(
                   label: 'Icono de la aplicación COMPAS',
                   child: Container(
@@ -89,7 +99,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.4),
+                          color: theme.colorScheme.primary.withValues(alpha: 0.4),
                           blurRadius: 30,
                           spreadRadius: 8,
                         ),
@@ -105,7 +115,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 const SizedBox(height: 48),
 
-                // TÍTULO
+                // TÍTULO PRINCIPAL
                 Semantics(
                   header: true,
                   label: 'Control de Voz',
@@ -129,7 +139,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     'Tecnología que te escucha',
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontSize: 18,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -137,7 +147,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 const SizedBox(height: 80),
 
-                // BOTÓN INICIAR SESIÓN (GIGANTE)
+                // BOTÓN PRINCIPAL: INICIAR SESIÓN
                 Semantics(
                   label: 'Botón: Iniciar sesión',
                   hint: 'Presione para acceder con su cuenta existente',
@@ -152,7 +162,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                 const SizedBox(height: 24),
 
-                // BOTÓN CREAR CUENTA
+                // BOTÓN SECUNDARIO: CREAR CUENTA
                 Semantics(
                   label: 'Botón: Crear cuenta nueva',
                   hint: 'Presione para registrarse por primera vez',
@@ -173,10 +183,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withOpacity(0.1),
+                      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: theme.colorScheme.secondary.withOpacity(0.3),
+                        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -194,7 +204,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.secondary,
+                            color: theme.colorScheme.onSecondaryContainer,
                           ),
                         ),
                       ],
@@ -234,7 +244,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             border: isPrimary
                 ? null
                 : Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
               width: 2,
             ),
           ),
