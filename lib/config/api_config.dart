@@ -5,7 +5,9 @@ class ApiConfig {
   // - Android Emulator: 'http://10.0.2.2:8000'
   // - iOS Simulator: 'http://localhost:8000'
   // - Dispositivo físico: 'http://TU_IP_LOCAL:8000'
-  static const String baseUrl = 'http://192.168.1.8:8080';
+  static const String baseUrlPC = 'http://127.0.0.1:8080';
+  static const String baseUrl = 'http://192.168.1.6:8080';
+
 
   // Endpoints
   static const String apiVersion = '/api/v1';

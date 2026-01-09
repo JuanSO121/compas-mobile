@@ -1,14 +1,11 @@
-// lib/main.dart - NAVEGACIÓN INFERIOR ACCESIBLE PARA CEGUERA
+// lib/main.dart - APLICACIÓN DE RECONOCIMIENTO ACCESIBLE (SIN ROBOT)
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
-import 'services/enhanced_websocket_service.dart';
 import 'services/audio_service.dart';
 import 'services/tts_service.dart';
-import 'services/dynamic_ip_detector.dart';
 import 'widgets/accessible_enhanced_voice_button.dart';
 import 'widgets/accessible_transcription_card.dart';
-import 'dart:async';
 import '/screens/auth/welcome_screen.dart';
 import 'screens/environment_recognition_screen.dart';
 
@@ -22,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Control de Voz para Robot',
+      title: 'COMPAS - Asistente de Voz',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -87,32 +84,21 @@ class AccessibleVoiceControlScreen extends StatefulWidget {
 
 class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScreen>
     with SingleTickerProviderStateMixin {
-  final EnhancedWebSocketService _webSocketService = EnhancedWebSocketService();
   final AudioService _audioService = AudioService();
   final TTSService _ttsService = TTSService();
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFieldFocusNode = FocusNode();
 
-  bool _isConnected = false;
-  bool _isConnecting = false;
-  bool _isSearchingServer = false;
-  String _connectionStatus = 'Desconectado';
-  String? _discoveredIP;
-
   bool _isRecording = false;
   bool _isProcessingAudio = false;
   bool _audioServiceReady = false;
-  bool _whisperAvailable = false;
 
   bool _ttsServiceReady = false;
   bool _ttsEnabled = true;
 
-  String _lastResponse = '';
   String _lastTranscription = '';
   double? _lastConfidence;
   double? _lastProcessingTime;
-
-  static const int SERVER_PORT = 8000;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -123,9 +109,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
   @override
   void initState() {
     super.initState();
-    _setupWebSocketCallbacks();
     _initializeServices();
-    _autoDiscoverAndConnect();
 
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -136,52 +120,17 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SemanticsService.announce(
-        'Aplicación COMPAS iniciada. Pantalla actual: Control de Voz. Use la navegación inferior para cambiar entre Control de Voz y Reconocimiento de Entorno',
+        'Aplicación COMPAS iniciada. Pantalla actual: Reconocimiento de Voz. Use la navegación inferior para cambiar entre funciones',
         TextDirection.ltr,
       );
     });
-  }
-
-  void _setupWebSocketCallbacks() {
-    _webSocketService.onConnectionStatus = (status) {
-      setState(() {
-        _connectionStatus = status['status'] ?? 'Desconocido';
-        _whisperAvailable = status['whisper_available'] ?? false;
-      });
-
-      if (status['status'] == 'connected') {
-        SemanticsService.announce('Conectado al servidor', TextDirection.ltr);
-      }
-    };
-
-    _webSocketService.onCommandResult = (result) {
-      setState(() {
-        _lastResponse = result.aiResponse ?? '';
-        if (result.transcription != null) {
-          _lastTranscription = result.transcription!;
-        }
-      });
-
-      if (result.success) {
-        HapticFeedback.lightImpact();
-      }
-    };
-
-    _webSocketService.onTranscriptionResult = (result) {
-      setState(() {
-        if (result.success && result.transcription != null) {
-          _lastTranscription = result.transcription!;
-          _lastConfidence = result.confidence;
-          _lastProcessingTime = result.processingTime;
-        }
-      });
-    };
   }
 
   Future<void> _initializeServices() async {
     try {
       await _audioService.initialize();
       setState(() => _audioServiceReady = true);
+      _showSnackBar('Micrófono listo');
     } catch (e) {
       setState(() => _audioServiceReady = false);
       _showSnackBar('Error de micrófono', isError: true);
@@ -198,62 +147,9 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
     }
   }
 
-  Future<void> _autoDiscoverAndConnect() async {
-    setState(() {
-      _isSearchingServer = true;
-      _connectionStatus = 'Buscando servidor...';
-    });
-
-    SemanticsService.announce('Detectando servidor en la red', TextDirection.ltr);
-
-    try {
-      final detectedIP = await DynamicIPDetector.detectWhisperServerIP();
-
-      if (detectedIP != null) {
-        await _connectToServer(detectedIP);
-        if (_isConnected) {
-          _showSnackBar('Conectado correctamente');
-        }
-      } else {
-        setState(() => _connectionStatus = 'Servidor no encontrado');
-        _showSnackBar('Servidor no encontrado en la red', isError: true);
-      }
-    } catch (e) {
-      setState(() => _connectionStatus = 'Error de conexión');
-      _showSnackBar('Error de red', isError: true);
-    } finally {
-      setState(() => _isSearchingServer = false);
-    }
-  }
-
-  Future<void> _connectToServer(String serverIP) async {
-    setState(() {
-      _isConnecting = true;
-      _connectionStatus = 'Conectando...';
-    });
-
-    try {
-      await _webSocketService.connect(serverIP, SERVER_PORT);
-      setState(() {
-        _isConnected = true;
-        _isConnecting = false;
-        _connectionStatus = 'Conectado';
-        _discoveredIP = serverIP;
-        _whisperAvailable = _webSocketService.whisperAvailable;
-      });
-    } catch (e) {
-      setState(() {
-        _isConnected = false;
-        _isConnecting = false;
-        _connectionStatus = 'Error de conexión';
-      });
-      rethrow;
-    }
-  }
-
   Future<void> _startRecording() async {
-    if (!_audioServiceReady || !_isConnected || !_whisperAvailable) {
-      _showSnackBar('Servicio no disponible', isError: true);
+    if (!_audioServiceReady) {
+      _showSnackBar('Micrófono no disponible', isError: true);
       return;
     }
 
@@ -274,7 +170,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
       final audioPath = await _audioService.stopRecording();
       setState(() => _isRecording = false);
       HapticFeedback.lightImpact();
-      SemanticsService.announce('Procesando comando de voz', TextDirection.ltr);
+      SemanticsService.announce('Procesando audio', TextDirection.ltr);
 
       if (audioPath != null) {
         await _processAudioFile(audioPath);
@@ -288,73 +184,69 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
   Future<void> _processAudioFile(String audioPath) async {
     setState(() {
       _isProcessingAudio = true;
-      _lastResponse = '';
       _lastTranscription = '';
     });
 
+    // Aquí puedes implementar tu lógica de procesamiento de audio
+    // Por ahora simulo un procesamiento básico
+    await Future.delayed(const Duration(seconds: 1));
+
     try {
-      final result = await _webSocketService.processAudioCommand(audioPath);
+      // Simulación de transcripción
+      final transcription = 'Audio grabado correctamente en: $audioPath';
+
       setState(() {
-        _lastResponse = result.aiResponse ?? '';
-        _lastTranscription = result.transcription ?? '';
+        _lastTranscription = transcription;
+        _lastConfidence = 0.95;
+        _lastProcessingTime = 1.2;
         _isProcessingAudio = false;
       });
 
-      if (result.success) {
-        _showSnackBar('Comando procesado correctamente');
-        if (_ttsEnabled && _ttsServiceReady && _lastResponse.isNotEmpty) {
-          await _ttsService.speakSystemResponse(_lastResponse);
-        }
-      } else {
-        _showSnackBar('Error de procesamiento', isError: true);
+      _showSnackBar('Audio procesado');
+
+      if (_ttsEnabled && _ttsServiceReady) {
+        await _ttsService.speakSystemResponse('Audio grabado correctamente');
       }
     } catch (e) {
       setState(() {
         _isProcessingAudio = false;
-        _lastResponse = 'Error: $e';
+        _lastTranscription = 'Error: $e';
       });
-      _showSnackBar('Error crítico', isError: true);
+      _showSnackBar('Error de procesamiento', isError: true);
     }
   }
 
-  Future<void> _sendTextCommand() async {
-    final command = _textController.text.trim();
-    if (command.isEmpty) {
+  Future<void> _processTextCommand() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) {
       _showSnackBar('Campo vacío', isError: true);
       _textFieldFocusNode.requestFocus();
       return;
     }
 
-    if (!_isConnected) {
-      _showSnackBar('Sin conexión al servidor', isError: true);
-      return;
-    }
-
     try {
-      setState(() => _lastResponse = 'Procesando...');
-      SemanticsService.announce('Enviando comando de texto', TextDirection.ltr);
+      setState(() => _lastTranscription = 'Procesando...');
+      SemanticsService.announce('Procesando texto', TextDirection.ltr);
 
-      final result = await _webSocketService.sendTextCommand(command);
+      // Aquí puedes implementar tu lógica de procesamiento de texto
+      await Future.delayed(const Duration(milliseconds: 500));
+
       setState(() {
-        _lastResponse = result.aiResponse ?? '';
-        _lastTranscription = command;
+        _lastTranscription = 'Texto recibido: $text';
+        _lastConfidence = 1.0;
       });
 
       _textController.clear();
+      _showSnackBar('Texto procesado correctamente');
 
-      if (result.success) {
-        _showSnackBar('Comando enviado correctamente');
-        if (_ttsEnabled && _ttsServiceReady && _lastResponse.isNotEmpty) {
-          await Future.delayed(const Duration(milliseconds: 500));
-          await _ttsService.speakSystemResponse(_lastResponse);
-        }
-        HapticFeedback.lightImpact();
-      } else {
-        _showSnackBar('Error al enviar comando', isError: true);
+      if (_ttsEnabled && _ttsServiceReady) {
+        await _ttsService.speakSystemResponse('Texto procesado correctamente');
       }
+
+      HapticFeedback.lightImpact();
     } catch (e) {
-      _showSnackBar('Error de conexión', isError: true);
-      setState(() => _lastResponse = 'Error: $e');
+      _showSnackBar('Error de procesamiento', isError: true);
+      setState(() => _lastTranscription = 'Error: $e');
     }
   }
 
@@ -373,7 +265,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
     setState(() => _currentIndex = index);
     HapticFeedback.mediumImpact();
 
-    final screenName = index == 0 ? 'Control de Voz' : 'Reconocimiento de Entorno';
+    final screenName = index == 0 ? 'Reconocimiento de Voz' : 'Reconocimiento de Entorno';
     SemanticsService.announce('Navegando a: $screenName', TextDirection.ltr);
   }
 
@@ -399,7 +291,6 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
 
   @override
   void dispose() {
-    _webSocketService.disconnect();
     _audioService.dispose();
     _ttsService.dispose();
     _textController.dispose();
@@ -419,7 +310,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
           opacity: _fadeAnimation,
           child: Column(
             children: [
-              // HEADER LIMPIO Y SEPARADO
+              // HEADER
               _buildCleanHeader(theme),
 
               // CONTENIDO DE LAS PANTALLAS
@@ -427,15 +318,11 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                 child: IndexedStack(
                   index: _currentIndex,
                   children: [
-                    // PANTALLA 1: CONTROL DE VOZ
+                    // PANTALLA 1: RECONOCIMIENTO DE VOZ
                     _buildVoiceControlTab(theme),
 
                     // PANTALLA 2: RECONOCIMIENTO DE ENTORNO
-                    EnvironmentRecognitionScreen(
-                      isConnected: _isConnected,
-                      webSocketService: _webSocketService,
-                      onReconnect: _autoDiscoverAndConnect,
-                    ),
+                    const EnvironmentRecognitionScreen(),
                   ],
                 ),
               ),
@@ -444,23 +331,18 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
         ),
       ),
 
-      // NAVEGACIÓN INFERIOR ACCESIBLE
+      // NAVEGACIÓN INFERIOR
       bottomNavigationBar: _buildAccessibleBottomNav(theme),
-
-      // BOTÓN DE ESTADO FLOTANTE (solo en pantalla de voz)
-      floatingActionButton: _currentIndex == 0 ? _buildStatusFAB(theme) : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  // HEADER LIMPIO: Solo logo + título + control de voz
   Widget _buildCleanHeader(ThemeData theme) {
     return Semantics(
       label: 'Encabezado de la aplicación',
       container: true,
       child: Container(
         decoration: BoxDecoration(
-          color: _isConnected ? theme.colorScheme.primary : theme.colorScheme.surface,
+          color: theme.colorScheme.primary,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
@@ -474,19 +356,17 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
           children: [
             // ICONO
             Semantics(
-              label: 'Icono de robot',
+              label: 'Icono de la aplicación',
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _isConnected
-                      ? Colors.white.withOpacity(0.2)
-                      : theme.colorScheme.primary.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.smart_toy_outlined,
+                child: const Icon(
+                  Icons.accessibility_new_rounded,
                   size: 32,
-                  color: _isConnected ? Colors.white : theme.colorScheme.primary,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -497,11 +377,11 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
             Expanded(
               child: Semantics(
                 header: true,
-                label: 'COMPAS - Control de Robot',
+                label: 'COMPAS - Asistente Accesible',
                 child: Text(
                   'COMPAS',
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: _isConnected ? Colors.white : theme.colorScheme.onSurface,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 26,
                   ),
@@ -509,7 +389,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
               ),
             ),
 
-            // BOTÓN DE SÍNTESIS DE VOZ (solo en pantalla de voz)
+            // BOTÓN DE SÍNTESIS DE VOZ
             if (_currentIndex == 0)
               Semantics(
                 label: _ttsEnabled
@@ -521,16 +401,14 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
                 button: true,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _isConnected
-                        ? Colors.white.withOpacity(0.2)
-                        : theme.colorScheme.primary.withOpacity(0.1),
+                    color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
                     icon: Icon(
                       _ttsEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
                       size: 28,
-                      color: _isConnected ? Colors.white : theme.colorScheme.primary,
+                      color: Colors.white,
                     ),
                     onPressed: _ttsServiceReady ? _toggleTTS : null,
                     padding: const EdgeInsets.all(12),
@@ -543,7 +421,6 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
     );
   }
 
-  // NAVEGACIÓN INFERIOR CON SEPARACIÓN CLARA
   Widget _buildAccessibleBottomNav(ThemeData theme) {
     return Semantics(
       label: 'Barra de navegación principal con dos opciones',
@@ -570,12 +447,12 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
           top: false,
           child: Row(
             children: [
-              // BOTÓN 1: CONTROL DE VOZ
+              // BOTÓN 1: RECONOCIMIENTO DE VOZ
               Expanded(
                 child: _buildNavButton(
                   theme: theme,
                   icon: Icons.mic_rounded,
-                  label: 'Control de Voz',
+                  label: 'Reconocimiento de Voz',
                   index: 0,
                 ),
               ),
@@ -610,7 +487,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
     required int index,
   }) {
     final isSelected = _currentIndex == index;
-    final baseColor = _isConnected ? theme.colorScheme.primary : theme.colorScheme.secondary;
+    final baseColor = theme.colorScheme.primary;
 
     return Semantics(
       label: label,
@@ -677,34 +554,34 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
           const SizedBox(height: 32),
 
           // BOTÓN DE VOZ GIGANTE
-          if (_isConnected) ...[
-            AccessibleEnhancedVoiceButton(
-              isRecording: _isRecording,
-              isProcessing: _isProcessingAudio,
-              whisperAvailable: _whisperAvailable && _audioServiceReady,
-              onStartRecording: _startRecording,
-              onStopRecording: _stopRecording,
-            ),
-            const SizedBox(height: 48),
-          ],
+          AccessibleEnhancedVoiceButton(
+            isRecording: _isRecording,
+            isProcessing: _isProcessingAudio,
+            whisperAvailable: _audioServiceReady,
+            onStartRecording: _startRecording,
+            onStopRecording: _stopRecording,
+          ),
+
+          const SizedBox(height: 48),
 
           // CAMPO DE TEXTO
           _buildTextInput(theme),
+
           const SizedBox(height: 24),
 
           // COMANDOS RÁPIDOS
-          if (_isConnected) _buildQuickCommands(theme),
+          _buildQuickCommands(theme),
 
           const SizedBox(height: 24),
 
-          // RESPUESTA DEL ROBOT
-          if (_lastResponse.isNotEmpty || _lastTranscription.isNotEmpty)
+          // RESULTADO DE LA TRANSCRIPCIÓN
+          if (_lastTranscription.isNotEmpty)
             AccessibleTranscriptionCard(
               transcription: _lastTranscription,
-              aiResponse: _lastResponse,
+              aiResponse: '',
               confidence: _lastConfidence,
               processingTime: _lastProcessingTime,
-              publishedToRos: true,
+              publishedToRos: false,
               autoSpeak: _ttsEnabled && _ttsServiceReady,
             ),
 
@@ -716,17 +593,15 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
 
   Widget _buildTextInput(ThemeData theme) {
     return Semantics(
-      label: 'Campo de texto para ingresar comando manualmente',
+      label: 'Campo de texto para ingresar texto manualmente',
       textField: true,
-      hint: 'Escriba su comando y presione el botón enviar',
+      hint: 'Escriba su texto y presione el botón enviar',
       child: Container(
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _isConnected
-                ? theme.colorScheme.primary.withOpacity(0.3)
-                : theme.colorScheme.onSurface.withOpacity(0.1),
+            color: theme.colorScheme.primary.withOpacity(0.3),
             width: 2,
           ),
           boxShadow: [
@@ -740,10 +615,9 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
         child: TextField(
           controller: _textController,
           focusNode: _textFieldFocusNode,
-          enabled: _isConnected,
           style: theme.textTheme.bodyLarge,
           decoration: InputDecoration(
-            hintText: 'Escribe tu comando aquí',
+            hintText: 'Escribe tu texto aquí',
             hintStyle: TextStyle(
               color: theme.colorScheme.onSurface.withOpacity(0.4),
               fontSize: 18,
@@ -751,21 +625,21 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
             border: InputBorder.none,
             contentPadding: const EdgeInsets.all(20),
             suffixIcon: Semantics(
-              label: 'Enviar comando de texto',
-              hint: 'Toque dos veces para enviar el comando escrito',
+              label: 'Procesar texto',
+              hint: 'Toque dos veces para procesar el texto escrito',
               button: true,
               child: IconButton(
                 icon: Icon(
                   Icons.send_rounded,
-                  color: _isConnected ? theme.colorScheme.primary : Colors.grey,
+                  color: theme.colorScheme.primary,
                   size: 28,
                 ),
-                onPressed: _isConnected ? _sendTextCommand : null,
+                onPressed: _processTextCommand,
                 padding: const EdgeInsets.all(12),
               ),
             ),
           ),
-          onSubmitted: _isConnected ? (_) => _sendTextCommand() : null,
+          onSubmitted: (_) => _processTextCommand(),
           textInputAction: TextInputAction.send,
           maxLines: null,
           minLines: 1,
@@ -775,7 +649,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
   }
 
   Widget _buildQuickCommands(ThemeData theme) {
-    final commands = ['Hola', 'Avanzar', 'Parar', 'Estado'];
+    final commands = ['Hola', 'Prueba de voz', 'Buenos días', 'Gracias'];
 
     return Semantics(
       label: 'Botones de comandos rápidos. ${commands.length} opciones disponibles',
@@ -785,7 +659,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
         alignment: WrapAlignment.center,
         children: commands.map((cmd) => Semantics(
           label: 'Comando rápido: $cmd',
-          hint: 'Toque dos veces para enviar este comando',
+          hint: 'Toque dos veces para usar este comando',
           button: true,
           child: Material(
             color: theme.colorScheme.primary.withOpacity(0.15),
@@ -793,7 +667,7 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
             child: InkWell(
               onTap: () {
                 _textController.text = cmd;
-                _sendTextCommand();
+                _processTextCommand();
               },
               borderRadius: BorderRadius.circular(24),
               child: Container(
@@ -812,65 +686,5 @@ class AccessibleVoiceControlScreenState extends State<AccessibleVoiceControlScre
         )).toList(),
       ),
     );
-  }
-
-  Widget _buildStatusFAB(ThemeData theme) {
-    if (_isSearchingServer || _isConnecting) {
-      return Semantics(
-        label: _isSearchingServer
-            ? 'Buscando servidor en la red'
-            : 'Conectando al servidor',
-        child: FloatingActionButton.extended(
-          onPressed: null,
-          backgroundColor: theme.colorScheme.surface,
-          elevation: 4,
-          label: Row(
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                _isSearchingServer ? 'Buscando...' : 'Conectando...',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!_isConnected) {
-      return Semantics(
-        label: 'Reconectar al servidor',
-        hint: 'Toque dos veces para intentar conectar al servidor nuevamente',
-        button: true,
-        child: FloatingActionButton.extended(
-          onPressed: _autoDiscoverAndConnect,
-          backgroundColor: theme.colorScheme.error,
-          elevation: 6,
-          icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 28),
-          label: const Text(
-            'Reconectar',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
   }
 }

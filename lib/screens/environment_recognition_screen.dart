@@ -1,25 +1,14 @@
-// lib/screens/environment_recognition_screen.dart - ESTILO POKÉMON GO
+// lib/screens/environment_recognition_screen.dart - SIN CONEXIÓN A ROBOT
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:async';
-import '../services/enhanced_websocket_service.dart';
 import '../widgets/accessible_camera_button.dart';
 import 'package:proximity_sensor/proximity_sensor.dart';
 
 class EnvironmentRecognitionScreen extends StatefulWidget {
-  final bool isConnected;
-  final EnhancedWebSocketService webSocketService;
-  final VoidCallback? onReconnect;
-
-  const EnvironmentRecognitionScreen({
-    Key? key,
-    required this.isConnected,
-    required this.webSocketService,
-    this.onReconnect,
-  }) : super(key: key);
+  const EnvironmentRecognitionScreen({Key? key}) : super(key: key);
 
   @override
   State<EnvironmentRecognitionScreen> createState() => _EnvironmentRecognitionScreenState();
@@ -33,15 +22,13 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
   bool _isCameraInitialized = false;
   bool _isStreaming = false;
   bool _isProcessing = false;
-  bool _isProximityBlocked = false; // Sensor de proximidad
+  bool _isProximityBlocked = false;
 
   String _lastResponse = '';
   String _detectedObjects = '';
   double? _processingTime;
 
-  // Stream del sensor de proximidad
   StreamSubscription<int>? _proximitySubscription;
-
   Timer? _streamingTimer;
 
   @override
@@ -127,11 +114,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
   }
 
   Future<void> _startVideoStream() async {
-    if (!widget.isConnected) {
-      _showSnackBar('Sin conexión al servidor', isError: true);
-      return;
-    }
-
     if (!_isCameraInitialized || _cameraController == null) {
       _showSnackBar('Cámara no disponible', isError: true);
       return;
@@ -141,9 +123,9 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
     HapticFeedback.mediumImpact();
     SemanticsService.announce('Transmisión iniciada', TextDirection.ltr);
 
-    _showSnackBar('Transmitiendo video...');
+    _showSnackBar('Analizando video en tiempo real...');
 
-    // Simular envío de frames cada 500ms
+    // Simulación de análisis continuo cada 500ms
     _streamingTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
       if (!_isStreaming || _cameraController == null) {
         timer.cancel();
@@ -151,11 +133,11 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
       }
 
       try {
-        // Aquí capturaríamos y enviaríamos frames al servidor
+        // Aquí puedes implementar tu lógica de procesamiento de video
+        // Por ejemplo, capturar frames y procesarlos con un modelo local
         // final image = await _cameraController!.takePicture();
-        // await widget.webSocketService.sendVideoFrame(image.path);
+        // procesarFrameLocal(image);
 
-        // Por ahora solo simulamos
         if (mounted) {
           setState(() {
             _detectedObjects = 'Detectando objetos...';
@@ -183,6 +165,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
     SemanticsService.announce('Procesando análisis final', TextDirection.ltr);
 
     // Simular procesamiento final
+    // Aquí puedes implementar tu análisis real
     await Future.delayed(const Duration(seconds: 2));
 
     setState(() {
@@ -193,15 +176,10 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
     });
 
     _showSnackBar('Análisis completado');
-    SemanticsService.announce('Análisis completado', TextDirection.ltr);
+    SemanticsService.announce('Análisis completado. Objetos: $_detectedObjects', TextDirection.ltr);
   }
 
   Future<void> _captureFrame() async {
-    if (!widget.isConnected) {
-      _showSnackBar('Sin conexión al servidor', isError: true);
-      return;
-    }
-
     if (!_isCameraInitialized || _cameraController == null) {
       _showSnackBar('Cámara no disponible', isError: true);
       return;
@@ -215,8 +193,9 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
       // Capturar imagen
       final image = await _cameraController!.takePicture();
 
-      // Aquí enviarías la imagen al servidor
-      // await widget.webSocketService.sendImage(image.path);
+      // Aquí puedes implementar tu procesamiento local
+      // Por ejemplo, usar tflite, ML Kit, o cualquier otro modelo
+      // final resultado = await procesarImagenLocal(image.path);
 
       // Simular procesamiento
       await Future.delayed(const Duration(seconds: 2));
@@ -229,6 +208,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
       });
 
       _showSnackBar('Imagen analizada');
+      SemanticsService.announce('Objetos detectados: $_detectedObjects', TextDirection.ltr);
     } catch (e) {
       setState(() => _isProcessing = false);
       _showSnackBar('Error al capturar', isError: true);
@@ -270,6 +250,12 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
       if (mounted) {
         setState(() {});
         HapticFeedback.lightImpact();
+        SemanticsService.announce(
+          currentLens == CameraLensDirection.back
+              ? 'Cámara frontal activada'
+              : 'Cámara trasera activada',
+          TextDirection.ltr,
+        );
       }
     } catch (e) {
       _showSnackBar('Error al cambiar cámara', isError: true);
@@ -309,7 +295,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
 
     return Stack(
       children: [
@@ -330,7 +315,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
                       valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
                     ),
                     const SizedBox(height: 24),
-                    Text(
+                    const Text(
                       'Iniciando cámara...',
                       style: TextStyle(
                         color: Colors.white,
@@ -352,13 +337,13 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+                  children: const [
                     Icon(
                       Icons.screen_lock_portrait_rounded,
                       size: 80,
                       color: Colors.white54,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Text(
                       'Pantalla Bloqueada',
                       style: TextStyle(
@@ -367,7 +352,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(
                       'Aleja el objeto para continuar',
                       style: TextStyle(
@@ -451,11 +436,11 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
         ),
         child: Row(
           children: [
-            // Estado de conexión
+            // Estado de la cámara
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: widget.isConnected
+                color: _isCameraInitialized
                     ? theme.colorScheme.secondary.withOpacity(0.3)
                     : theme.colorScheme.error.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(12),
@@ -464,13 +449,13 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    widget.isConnected ? Icons.wifi : Icons.wifi_off,
+                    _isCameraInitialized ? Icons.videocam : Icons.videocam_off,
                     size: 16,
                     color: Colors.white,
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    widget.isConnected ? 'Conectado' : 'Sin conexión',
+                    _isCameraInitialized ? 'Cámara activa' : 'Sin cámara',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -486,6 +471,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             // Botón cambiar cámara
             Semantics(
               label: 'Cambiar cámara',
+              hint: 'Alternar entre cámara frontal y trasera',
               button: true,
               child: Material(
                 color: Colors.white.withOpacity(0.2),
@@ -531,7 +517,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             Icon(Icons.circle, size: 12, color: Colors.white),
             SizedBox(width: 10),
             Text(
-              'EN VIVO',
+              'ANALIZANDO',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -549,21 +535,21 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
     return Column(
       children: [
         // BOTÓN DE CÁMARA PRINCIPAL
-        if (widget.isConnected)
-          AccessibleCameraButton(
-            isStreaming: _isStreaming,
-            isProcessing: _isProcessing,
-            isConnected: widget.isConnected,
-            onStartStream: _startVideoStream,
-            onStopStream: _stopVideoStream,
-          ),
+        AccessibleCameraButton(
+          isStreaming: _isStreaming,
+          isProcessing: _isProcessing,
+          isConnected: _isCameraInitialized,
+          onStartStream: _startVideoStream,
+          onStopStream: _stopVideoStream,
+        ),
 
         const SizedBox(height: 24),
 
         // BOTÓN DE CAPTURA RÁPIDA
-        if (!_isStreaming && !_isProcessing)
+        if (!_isStreaming && !_isProcessing && _isCameraInitialized)
           Semantics(
             label: 'Capturar imagen única',
+            hint: 'Tomar una foto para análisis instantáneo',
             button: true,
             child: Material(
               color: Colors.white.withOpacity(0.2),
@@ -602,7 +588,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
   Widget _buildResultsCard(ThemeData theme) {
     return Semantics(
-      label: 'Resultados del análisis',
+      label: 'Resultados del análisis. $_lastResponse. Objetos detectados: $_detectedObjects',
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -634,6 +620,17 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
                     color: Colors.white,
                   ),
                 ),
+                if (_processingTime != null) ...[
+                  const Spacer(),
+                  Text(
+                    '${_processingTime!.toStringAsFixed(1)}s',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
 
@@ -654,7 +651,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             // OBJETOS DETECTADOS
             if (_detectedObjects.isNotEmpty) ...[
               const Text(
-                'Objetos:',
+                'Objetos detectados:',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
