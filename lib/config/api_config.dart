@@ -6,7 +6,9 @@ class ApiConfig {
   // - iOS Simulator: 'http://localhost:8000'
   // - Dispositivo físico: 'http://TU_IP_LOCAL:8000'
   static const String baseUrlPC = 'http://127.0.0.1:8080';
-  static const String baseUrl = 'http://192.168.1.6:8080';
+  static const String baseUrl = 'http://192.168.1.9:8080';
+
+  static const String geminiApiKey = 'AIzaSyCkOOTdYl9hfHVBmwwi-72riHJbXpENdy8';
 
 
   // Endpoints
@@ -34,11 +36,18 @@ class ApiConfig {
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 
+  static const String picovoiceAccessKey = 'eV5aGFB6MbjE+8Zn+jC7Ued1ijrvKhF4I8o8HBRuzsC9s1jjUmUKSQ==';
+
   // Headers
   static Map<String, String> get defaultHeaders => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
+
+  /// Verificar si la key está configurada
+  static bool get isConfigured =>
+      picovoiceAccessKey != 'eV5aGFB6MbjE+8Zn+jC7Ued1ijrvKhF4I8o8HBRuzsC9s1jjUmUKSQ==' &&
+          picovoiceAccessKey.isNotEmpty;
 
   static Map<String, String> authHeaders(String token) => {
     ...defaultHeaders,

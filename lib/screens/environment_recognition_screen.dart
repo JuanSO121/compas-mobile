@@ -1,14 +1,14 @@
-// lib/screens/environment_recognition_screen.dart - SIN CONEXIÓN A ROBOT
+// lib/screens/environment_recognition_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'dart:async';
+import '../services/proximity_service.dart';
 import '../widgets/accessible_camera_button.dart';
-import 'package:proximity_sensor/proximity_sensor.dart';
 
 class EnvironmentRecognitionScreen extends StatefulWidget {
-  const EnvironmentRecognitionScreen({Key? key}) : super(key: key);
+  const EnvironmentRecognitionScreen({super.key});
 
   @override
   State<EnvironmentRecognitionScreen> createState() => _EnvironmentRecognitionScreenState();
@@ -28,7 +28,7 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
   String _detectedObjects = '';
   double? _processingTime;
 
-  StreamSubscription<int>? _proximitySubscription;
+  StreamSubscription<bool>? _proximitySubscription; // ✅ Corregido: bool en lugar de int
   Timer? _streamingTimer;
 
   @override
@@ -72,7 +72,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
         return;
       }
 
-      // Seleccionar cámara trasera
       final camera = _cameras!.firstWhere(
             (camera) => camera.lensDirection == CameraLensDirection.back,
         orElse: () => _cameras!.first,
@@ -97,19 +96,19 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
   }
 
   void _setupProximitySensor() {
-    _proximitySubscription = ProximitySensor.events.listen((int event) {
-      bool isClose = event > 0; // 1 = cerca, 0 = lejos
+    _proximitySubscription = ProximityService.proximityStream.listen((isClose) {
+      if (!mounted || !_isStreaming) return;
 
-      if (mounted && _isStreaming) {
-        setState(() {
-          _isProximityBlocked = isClose;
-        });
+      setState(() {
+        _isProximityBlocked = isClose;
+      });
 
-        SemanticsService.announce(
-          isClose ? 'Pantalla bloqueada por proximidad' : 'Pantalla desbloqueada',
-          TextDirection.ltr,
-        );
-      }
+      SemanticsService.announce(
+        isClose
+            ? 'Pantalla bloqueada por proximidad'
+            : 'Pantalla desbloqueada',
+        TextDirection.ltr,
+      );
     });
   }
 
@@ -125,7 +124,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
     _showSnackBar('Analizando video en tiempo real...');
 
-    // Simulación de análisis continuo cada 500ms
     _streamingTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
       if (!_isStreaming || _cameraController == null) {
         timer.cancel();
@@ -133,11 +131,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
       }
 
       try {
-        // Aquí puedes implementar tu lógica de procesamiento de video
-        // Por ejemplo, capturar frames y procesarlos con un modelo local
-        // final image = await _cameraController!.takePicture();
-        // procesarFrameLocal(image);
-
         if (mounted) {
           setState(() {
             _detectedObjects = 'Detectando objetos...';
@@ -164,8 +157,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
     HapticFeedback.lightImpact();
     SemanticsService.announce('Procesando análisis final', TextDirection.ltr);
 
-    // Simular procesamiento final
-    // Aquí puedes implementar tu análisis real
     await Future.delayed(const Duration(seconds: 2));
 
     setState(() {
@@ -190,14 +181,8 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
     SemanticsService.announce('Capturando imagen', TextDirection.ltr);
 
     try {
-      // Capturar imagen
       final image = await _cameraController!.takePicture();
 
-      // Aquí puedes implementar tu procesamiento local
-      // Por ejemplo, usar tflite, ML Kit, o cualquier otro modelo
-      // final resultado = await procesarImagenLocal(image.path);
-
-      // Simular procesamiento
       await Future.delayed(const Duration(seconds: 2));
 
       setState(() {
@@ -298,7 +283,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
     return Stack(
       children: [
-        // VISTA DE CÁMARA EN TIEMPO REAL (FULLSCREEN)
         if (_isCameraInitialized && _cameraController != null)
           Positioned.fill(
             child: _buildCameraPreview(),
@@ -329,7 +313,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             ),
           ),
 
-        // OVERLAY DE BLOQUEO POR PROXIMIDAD
         if (_isProximityBlocked)
           Positioned.fill(
             child: Container(
@@ -366,7 +349,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             ),
           ),
 
-        // CONTROLES SUPERIORES
         if (!_isProximityBlocked)
           Positioned(
             top: 16,
@@ -375,7 +357,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             child: _buildTopControls(theme),
           ),
 
-        // INDICADOR DE STREAMING
         if (_isStreaming && !_isProximityBlocked)
           Positioned(
             top: 80,
@@ -384,7 +365,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             child: _buildStreamingIndicator(theme),
           ),
 
-        // CONTROLES INFERIORES
         if (!_isProximityBlocked)
           Positioned(
             bottom: 32,
@@ -393,7 +373,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
             child: _buildBottomControls(theme),
           ),
 
-        // RESULTADOS DEL ANÁLISIS
         if (_lastResponse.isNotEmpty && !_isStreaming && !_isProximityBlocked)
           Positioned(
             bottom: 200,
@@ -436,7 +415,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
         ),
         child: Row(
           children: [
-            // Estado de la cámara
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -468,7 +446,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
             const Spacer(),
 
-            // Botón cambiar cámara
             Semantics(
               label: 'Cambiar cámara',
               hint: 'Alternar entre cámara frontal y trasera',
@@ -534,7 +511,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
   Widget _buildBottomControls(ThemeData theme) {
     return Column(
       children: [
-        // BOTÓN DE CÁMARA PRINCIPAL
         AccessibleCameraButton(
           isStreaming: _isStreaming,
           isProcessing: _isProcessing,
@@ -545,7 +521,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
         const SizedBox(height: 24),
 
-        // BOTÓN DE CAPTURA RÁPIDA
         if (!_isStreaming && !_isProcessing && _isCameraInitialized)
           Semantics(
             label: 'Capturar imagen única',
@@ -603,7 +578,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // HEADER
             Row(
               children: [
                 Icon(
@@ -636,7 +610,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
             const SizedBox(height: 12),
 
-            // RESPUESTA
             Text(
               _lastResponse,
               style: const TextStyle(
@@ -648,7 +621,6 @@ class _EnvironmentRecognitionScreenState extends State<EnvironmentRecognitionScr
 
             const SizedBox(height: 16),
 
-            // OBJETOS DETECTADOS
             if (_detectedObjects.isNotEmpty) ...[
               const Text(
                 'Objetos detectados:',

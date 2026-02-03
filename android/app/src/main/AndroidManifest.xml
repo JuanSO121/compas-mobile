@@ -2,60 +2,48 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.flutter_voice_robot">
 
-    <!-- ✅ PERMISOS OBLIGATORIOS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- ✅ PERMISOS ESENCIALES (MODERNOS) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- ✅ PERMISOS DE ALMACENAMIENTO (Android 12 y anteriores) -->
-    <!-- Android 13+ usa almacenamiento con alcance automático -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"
-        tools:targetApi="4" />
+    <!-- ✅ MEJORA: Permiso para audio Bluetooth en Android 12+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- ✅ PERMISOS ADICIONALES NUEVOS PARA MR / SENSOR FUSION -->
+    <!-- ================================================================ -->
+    <!-- ✅ SOLUCIÓN: CÁMARA OPCIONAL (FORMA CORRECTA)                      -->
+    <!-- ================================================================ -->
+    <!-- 1. Declara que vas a usar el permiso de la cámara. -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.BODY_SENSORS" />
-    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />
 
-    <!-- ✅ CARACTERÍSTICAS DEL DISPOSITIVO -->
-    <uses-feature android:name="android.hardware.microphone" android:required="true"
-        tools:targetApi="5" />
-    <uses-feature android:name="android.hardware.audio.output" android:required="false"
-        tools:targetApi="5" />
-    <uses-feature android:name="android.hardware.camera" android:required="false"
-        tools:targetApi="5" />
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"
-        tools:targetApi="5" />
-    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false"
-        tools:targetApi="5" />
-    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false"
-        tools:targetApi="5" />
+    <!-- 2. Declara que la característica (la cámara física) NO es requerida. -->
+    <!-- Esto permite que tu app se instale en dispositivos sin cámara. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
 
     <application
-        android:label="Voice Robot Control"
+        android:label="COMPAS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:allowBackup="false"
-        android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
-        tools:targetApi="23">
+        android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- ✅ METADATA PARA GOOGLE AI EDGE (NPU) -->
+        <meta-data
+            android:name="com.google.android.gms.ai.edge.enabled"
+            android:value="true" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize"
-            tools:targetApi="11">
+            android:windowSoftInputMode="adjustResize">
 
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
@@ -82,19 +70,11 @@
         </provider>
     </application>
 
+    <!-- ✅ QUERIES (YA ESTABA BIEN) -->
     <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:mimeType="*/*" />
-        </intent>
-
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
-        </intent>
-
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <package android:name="com.google.android.gms" />
     </queries>
 </manifest>

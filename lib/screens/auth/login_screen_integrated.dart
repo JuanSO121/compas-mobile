@@ -4,6 +4,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import '../../services/auth_service.dart';
 import '../../main.dart';
+import '../voice_navigation_screen.dart';
 
 class LoginScreenIntegrated extends StatefulWidget {
   const LoginScreenIntegrated({super.key});
@@ -130,7 +131,7 @@ class _LoginScreenIntegratedState extends State<LoginScreenIntegrated>
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const AccessibleVoiceControlScreen()),
+          MaterialPageRoute(builder: (_) => const VoiceNavigationScreen()),
         );
       } else {
         // Error en login

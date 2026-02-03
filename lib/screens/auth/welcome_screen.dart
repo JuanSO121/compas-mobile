@@ -2,8 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
-import 'package:accessible_voice_robot_control/screens/auth/login_screen_integrated.dart';
-import 'package:accessible_voice_robot_control/screens/auth/register_screen_integrated.dart';
+import 'package:flutter_voice_robot/screens/auth/register_screen_integrated.dart';
+
+import 'login_screen_integrated.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});

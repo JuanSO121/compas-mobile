@@ -4,6 +4,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../main.dart';
+import '../voice_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -159,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const AccessibleVoiceControlScreen()),
+      MaterialPageRoute(builder: (_) => const VoiceNavigationScreen()),
     );
 
   }
